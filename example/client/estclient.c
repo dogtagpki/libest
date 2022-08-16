@@ -1279,12 +1279,9 @@ int main (int argc, char **argv)
                 est_port = atoi(optarg);
                 break;
             case 'f':
-                /* Turn FIPS on if requested and exit if failure */
-                set_fips_return = FIPS_mode_set(1);
-                if (!set_fips_return) {
-                    printf("\nERROR setting FIPS MODE ON ...\n");
-                    ERR_load_crypto_strings();
-                    ERR_print_errors(BIO_new_fp(stderr,BIO_NOCLOSE));
+                /* Ensure FIPS mode is on */
+                if (!FIPS_mode()) {
+                    printf("\nERROR FIPS required, but disabled...\n");
                     exit(1);
                 } else {
                     printf("\nRunning EST Sample Client with FIPS MODE = ON\n");
