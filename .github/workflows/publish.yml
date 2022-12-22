@@ -1,0 +1,60 @@
+name: Publish libEST
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    name: Building libEST
+    runs-on: ubuntu-latest
+    steps:
+    - name: Clone repository
+      uses: actions/checkout@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Build libest-builder image
+      uses: docker/build-push-action@v3
+      with:
+        context: .
+        tags: libest-builder
+        target: libest-builder
+
+    - name: Build libest-dist image
+      uses: docker/build-push-action@v3
+      with:
+        context: .
+        tags: libest-dist
+        target: libest-dist
+        outputs: type=docker,dest=libest-dist.tar
+
+    - name: Store libest-dist image
+      uses: actions/cache@v3
+      with:
+        key: libest-dist-${{ github.sha }}
+        path: libest-dist.tar
+
+  publish:
+    name: Publishing libEST
+    if: github.event_name == 'push' && github.ref_name == 'v3.2.0-pki'
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: Log in to the Container registry
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Retrieve libest-dist image
+      uses: actions/cache@v3
+      with:
+        key: libest-dist-${{ github.sha }}
+        path: libest-dist.tar
+
+    - name: Publish libest-dist image
+      run: |
+        docker load --input libest-dist.tar
+        docker tag libest-dist ghcr.io/${{ github.repository_owner }}/libest-dist:latest
+        docker push ghcr.io/${{ github.repository_owner }}/libest-dist:latest
