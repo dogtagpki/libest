@@ -3,8 +3,18 @@ name: Publish libEST
 on: [push, pull_request]
 
 jobs:
+  init:
+    name: Initialization
+    runs-on: ubuntu-latest
+    steps:
+    - name: Container registry configuration
+      run: |
+        echo "REGISTRY: ${{ vars.REGISTRY }}"
+        echo "REGISTRY_NAMESPACE: ${{ vars.REGISTRY_NAMESPACE }}"
+
   build:
     name: Building libEST
+    needs: init
     runs-on: ubuntu-latest
     steps:
     - name: Clone repository
@@ -36,16 +46,25 @@ jobs:
 
   publish:
     name: Publishing libEST
-    if: github.event_name == 'push' && github.ref_name == 'v3.2.0-pki'
-    needs: build
+    if: github.event_name == 'push' && github.ref_name == 'v3.2.0-pki' && vars.REGISTRY != ''
+    needs: [init, build]
     runs-on: ubuntu-latest
     steps:
-    - name: Log in to the Container registry
+    - name: Log in to GitHub Container Registry
       uses: docker/login-action@v2
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+      if: vars.REGISTRY == 'ghcr.io'
+
+    - name: Log in to other container registry
+      uses: docker/login-action@v2
+      with:
+        registry: ${{ vars.REGISTRY }}
+        username: ${{ secrets.REGISTRY_USERNAME }}
+        password: ${{ secrets.REGISTRY_PASSWORD }}
+      if: vars.REGISTRY != 'ghcr.io'
 
     - name: Retrieve libest-dist image
       uses: actions/cache@v3
@@ -56,5 +75,5 @@ jobs:
     - name: Publish libest-dist image
       run: |
         docker load --input libest-dist.tar
-        docker tag libest-dist ghcr.io/${{ github.repository_owner }}/libest-dist:latest
-        docker push ghcr.io/${{ github.repository_owner }}/libest-dist:latest
+        docker tag libest-dist ${{ vars.REGISTRY }}/${{ vars.REGISTRY_NAMESPACE }}/libest-dist:latest
+        docker push ${{ vars.REGISTRY }}/${{ vars.REGISTRY_NAMESPACE }}/libest-dist:latest
