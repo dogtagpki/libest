@@ -37,3 +37,16 @@ FROM alpine:latest AS libest-dist
 
 # Import libEST packages
 COPY --from=libest-builder /root/RPMS /root/RPMS/
+
+################################################################################
+FROM registry.fedoraproject.org/fedora:latest AS libest
+
+# Import libEST packages
+COPY --from=libest-dist /root/RPMS /tmp/RPMS/
+
+# Install libEST packages
+RUN dnf localinstall -y /tmp/RPMS/* \
+    && dnf install -y openssl \
+    && dnf clean all \
+    && rm -rf /var/cache/dnf \
+    && rm -rf /tmp/RPMS

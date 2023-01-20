@@ -47,6 +47,20 @@ jobs:
           key: libest-dist-${{ github.sha }}
           path: libest-dist.tar
 
+      - name: Build libest image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          tags: libest
+          target: libest
+          outputs: type=docker,dest=libest.tar
+
+      - name: Store libest image
+        uses: actions/cache@v3
+        with:
+          key: libest-${{ github.sha }}
+          path: libest.tar
+
   publish:
     name: Publishing libEST
     if: github.event_name == 'push' && github.ref_name == 'v3.2.0-pki' && vars.REGISTRY != ''
@@ -80,3 +94,15 @@ jobs:
           docker load --input libest-dist.tar
           docker tag libest-dist ${{ vars.REGISTRY }}/$NAMESPACE/libest-dist:latest
           docker push ${{ vars.REGISTRY }}/$NAMESPACE/libest-dist:latest
+
+      - name: Retrieve libest image
+        uses: actions/cache@v3
+        with:
+          key: libest-${{ github.sha }}
+          path: libest.tar
+
+      - name: Publish libest image
+        run: |
+          docker load --input libest.tar
+          docker tag libest ${{ vars.REGISTRY }}/$NAMESPACE/libest:latest
+          docker push ${{ vars.REGISTRY }}/$NAMESPACE/libest:latest
